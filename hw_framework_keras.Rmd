@@ -1,0 +1,633 @@
+---
+title: "R Framework hw"
+output:
+  html_document:
+    df_print: paged
+---
+
+**Homework on Frameworks using Keras and R Summary**
+
+In this homework you will work with Keras through R and re-do prior assignments using Keras and also build some text processing models.  This assignment will give you hands on experience with different Keras models.
+
+- [Keras Cheatsheet](https://github.com/rstudio/cheatsheets/raw/master/keras.pdf)
+
+**Step 1 installation**
+
+Install anaconda 3 on your computer and then install the keras and reticulate packages.  Then load keras.
+```{r }
+#install.packages('keras')
+#install.packages('reticulate')
+source('data_gen.R')
+library(reticulate)
+library(keras)
+#install_keras()
+```
+
+**Step 2 **
+Re-create the linear model without any hidden units from the previous homework using the data.lawrence.giles data generation function.
+
+- Then plot the loss and performance of the model
+
+```{r }
+###########  linear no hidden  ############################################
+
+
+lr0=.1
+#without train dim it errors on summary
+l2reg=0
+
+input_layer <- layer_input(shape = 1, name = 'input')
+output_layer <- layer_dense(input_layer ,name='last_layer',units = 1,kernel_regularizer = regularizer_l2(l2reg),bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+model_simple <- keras_model(inputs = input_layer, outputs = output_layer )
+
+summary(model_simple)
+
+#,clipnorm=1,,clipvalue=1
+opt <- optimizer_sgd(lr = lr0,momentum=.2)
+
+compile(model_simple,
+        optimizer = opt, 
+        loss = "mse", 
+        metrics = c("mae")
+)
+data=data.lawrence.giles(123)
+X=matrix(data$X,nrow=1)
+Y=matrix(data$Y,nrow=1)
+
+data=data.lawrence.giles(123)
+test_X=matrix(data$X,nrow=1)
+test_Y=matrix(data$Y,nrow=1)
+validation_data=list(t(test_X),t(test_Y))
+history=fit(model_simple,t(X),t(Y),validation_data =validation_data)
+plot(history)
+```
+
+**Step 3 **
+
+Re-do the linear model with the following number of hidden units : 2,5,100 and plot results.  (This is the same as step 7 in hw 5 but now using Keras)
+
+```{r}
+c(X,Y,xgrid,ygrid) %<-% data.lawrence.giles(12345)
+X=X/(2*pi)
+xgrid=xgrid/(2*pi)
+np=length(X)
+
+lr0=.1
+
+
+models=vector(mode='list')
+results=vector(mode='list')
+num_hidden=c(2,5,100)
+
+#num_hidden=c(100)
+
+counter=0
+for (nh in num_hidden){
+  counter=counter+1
+  
+  input_layer <- layer_input(shape = 1, name = 'input')
+  hidden_layer<-   layer_dense(input_layer,units = nh, activation = 'tanh',
+                               bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                               kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+  output_layer <- layer_dense(hidden_layer ,units = 1,
+                              bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                              kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104))#,kernel_regularizer = regularizer_l2(l2reg),bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+  model <- keras_model(inputs = input_layer, outputs = output_layer )
+  
+  #,clipnorm=1,,clipvalue=1
+  opt <- optimizer_sgd(lr = lr0,momentum=0)
+  
+  compile(model,
+          optimizer = opt, 
+          loss = "mse", 
+          metrics = c("mae")
+  )
+  summary(model)
+  print(system.time({results[[counter]]=fit(model,t(X),t(Y),
+                         validation_data =validation_data,epochs=150000,verbose=0,batch_size=20);}))
+  models[[counter]]=model
+}
+
+colors <- c('red','green','blue','purple','orange','pink','black') 
+plot(xgrid,ygrid,col="black",lwd=3,type="l",ylim=c(-2.5,2.5),main='Predictions of different num hidden units')
+points(X,Y,col="blue",pch=16,lwd=2,cex=1.25)
+for (i in 1:counter){
+  yhat=predict(models[[i]],(xgrid))
+  print(lines(xgrid,yhat,col=colors[i],lwd=1.5))
+  legend("topright", legend = num_hidden, col = colors,lwd=1 )
+  
+}
+
+```
+
+
+**Step 4 Build a binary model with Keras **
+
+Re-build the model you did for binary spiral data (step 8) using the tanh activation and 30 hidden units with a learning rate of 1.
+
+```{r}
+library(mlbench)
+data=mlbench.spirals(75,1.5,.07)
+X=t(data$x)
+Y=matrix(as.integer(data$classes)-1,nrow=1)
+
+
+data$color=as.integer(data$classes)+2
+grid=expand.grid(X1 = seq(min(X[1,])-.25,max(X[1,])+.25,length.out = 101),
+                 X2 = seq(min(X[2,])-.25,max(X[2,])+.25,length.out = 101))
+grid=t(data.matrix(grid))
+
+dim(X)=c(75,2);dim(Y)=c(75,1)
+
+
+nh=30
+lr0=1
+input_layer <- layer_input(shape = 2, name = 'input')
+hidden_layer<-   layer_dense(input_layer,units = nh, activation = 'tanh',
+                             bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                             kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+output_layer <- layer_dense(hidden_layer ,units = 1, activation='sigmoid',
+                            bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                            kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104))#,kernel_regularizer = regularizer_l2(l2reg),bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+model_logit <- keras_model(inputs = input_layer, outputs = output_layer )
+
+#,clipnorm=1,,clipvalue=1
+opt <- optimizer_sgd(lr = lr0,momentum=0)
+compile(model_logit,
+        optimizer = opt, 
+        loss = "binary_crossentropy", 
+        metrics = c("acc")
+)
+summary(model_logit)
+results_binary=fit(model_logit,X,Y,epochs=20000,verbose=0,batch_size = 75)
+#plot(results_binary$metrics$acc[seq(1,20000,1000)])
+
+
+
+sum(1*(predict(model_logit,X)>=.5)==Y)
+pgrid=1*(predict(model_logit,t(grid))>=.5)
+#,col=ifelse(pgrid==1,'pink' ,'yellow')
+plot(X[,1],X[,2],pch=1,lwd=2,col=data$color,cex=1)
+#points(grid[1,],grid[2,],col=ifelse(pgrid==1,'pink' ,'white'),cex=.4)
+points(grid[1,],grid[2,],col=pgrid+3,cex=.001)
+
+wrong=which(1*(predict(model_logit,X)>=.5)!=Y)
+for(i in wrong) points(X[i,1],X[i,2],lwd=2,col="red",cex=2)
+
+```
+
+** Step 5 Custom activations **
+
+Keras allows you to use custom activations.  Re-do the spiral binary data model using the swish activation and the penalized tanh activations.  Details can be found in the [Time to Swish](http://aclweb.org/anthology/D18-1472) paper.
+
+
+
+```{r}
+swish_custom_activation <- function(x,b=1) {
+  x *sigmoid(b*x)
+}
+
+nh=30
+lr0=1
+input_layer <- layer_input(shape = 2, name = 'input')
+hidden_layer<-   layer_dense(input_layer,units = nh, activation=swish_custom_activation,
+                             bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                             kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+output_layer <- layer_dense(hidden_layer ,units = 1, activation='sigmoid',
+                            bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                            kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104))#,kernel_regularizer = regularizer_l2(l2reg),bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+model_logit_swish <- keras_model(inputs = input_layer, outputs = output_layer )
+
+#,clipnorm=1,,clipvalue=1
+opt <- optimizer_sgd(lr = lr0,momentum=0)
+compile(model_logit_swish,
+        optimizer = opt, 
+        loss = "binary_crossentropy", 
+        metrics = c("acc")
+)
+summary(model_logit_swish)
+results_binary2=fit(model_logit_swish,X,Y,epochs=20000,verbose=0,batch_size = 75)
+
+## penalized tanh  ##
+#http://aclweb.org/anthology/D18-1472 time to swish; can't subset tensor or use ifelse so used leaky relu to approx ptanh
+  ptanh_custom_activation <- function(x){
+   th=sin(x)/cos(x)
+   th
+  }
+  nh=30
+  lr0=1
+  input_layer <- layer_input(shape = 2, name = 'input')
+  
+  hidden_layer<-   layer_dense(input_layer,units = nh, activation=ptanh_custom_activation,
+                               bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                               kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+  output_layer <- layer_dense(layer_activation_leaky_relu(hidden_layer,.25) ,units = 1, activation='sigmoid',
+                              bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                              kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104))#,kernel_regularizer = regularizer_l2(l2reg),bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+  model_logit_ptanh <- keras_model(inputs = input_layer, outputs = output_layer )
+  
+  #,clipnorm=1,,clipvalue=1
+  opt <- optimizer_sgd(lr = lr0,momentum=0)
+  compile(model_logit_ptanh,
+          optimizer = opt, 
+          loss = "binary_crossentropy", 
+          metrics = c("acc")
+  )
+  summary(model_logit_ptanh)
+  results_binary3=fit(model_logit_ptanh,X,Y,epochs=20000,verbose=0,batch_size = 75)  
+
+  
+  plot(results_binary$metrics$acc,col='blue',main='accuracy by activation ',ylab='perf'); 
+  lines(results_binary2$metrics$acc,col='red'); 
+  lines(results_binary3$metrics$acc,col='green'); 
+  legend('bottomright',c('tanh','swish','ptanh'),col=c('blue','red','green'),lty=1)
+  
+
+```
+
+
+** Step 7 Optimizers **
+
+Models thus far used stochastic or full gradient descent optimizers .
+
+
+**Step 7 MNIST data with Keras**
+
+Re-do the assignment for the softmax output for MNIST data for the full data with 1 layer using the tanh activation with 30 hidden units with a .15 learning rate.
+
+```{r}
+############ MNIST softmax ####################
+
+mnist = list(train=load_image_file("train-images-idx3-ubyte"),test=load_image_file("t10k-images-idx3-ubyte"))
+mnist[["train"]]$y = load_label_file("train-labels-idx1-ubyte")
+mnist[["test"]]$y = load_label_file("t10k-labels-idx1-ubyte")  
+
+train_set=sample(1:dim(mnist$train$x)[1], size = 60000)
+X=t(mnist[["train"]]$x[train_set,])/255.
+y=mnist[["train"]]$y[train_set]
+#Y=one.hot(y)
+Y=to_categorical(y,10)
+testX=t(mnist[["test"]]$x)/255.
+testY=mnist[["test"]]$y
+
+nh=30
+lr=.15
+
+input_layer <- layer_input(shape = 784, name = 'input')
+hidden_layer<-   layer_dense(input_layer,units = nh, activation = 'tanh',
+                             bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                             kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+output_layer <- layer_dense(hidden_layer ,units = 10, activation='sigmoid',
+                            bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                            kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104))#,kernel_regularizer = regularizer_l2(l2reg),bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+model_logit <- keras_model(inputs = input_layer, outputs = output_layer )
+
+#,clipnorm=1,,clipvalue=1
+opt <- optimizer_sgd(lr = lr0,momentum=0)
+compile(model_logit,
+        optimizer = opt, 
+        loss = "categorical_crossentropy", 
+        metrics = c("acc")
+)
+summary(model_logit)
+results_binary=fit(model_logit,t(X),Y,epochs=50,verbose=0,batch_size = 60000)
+#plot(results_binary$metrics$acc[seq(1,20000,1000)])
+yhat =predict(model_logit,t(testX))
+predicted_label = apply(t(yhat),2,which.max)-1
+sum(predicted_label==testY)/length(testY)
+
+```
+
+** Step 8 **
+
+Re-do MNIST with a relu activation and 2 hidden layers and mini-batch with a batch size of 128.  Use 30 hidden units on the first layer and use  1 hidden unit on the second layer but use drop out regularization.
+In addition name each layer.
+
+```{r}
+# 2 hidden layer  mnist and tsne of each layer
+lr=lr0=.1
+
+nh=30
+input_layer <- layer_input(shape = 784, name = 'input')
+hidden_layer<-   layer_dense(input_layer,name='h1',units = nh, activation = 'relu'
+)#                             ,kernel_regularizer = regularizer_l1(1/(100*10000)),
+#                             bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+#                             kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+hidden_layer2<-   layer_dropout( layer_dense(hidden_layer,name='h2',units = 1, activation = 'softmax'
+#                                             ,kernel_regularizer = regularizer_l1(1/(100*10000))
+#                              ,bias_initializer = initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104)
+#                              ,kernel_initializer = initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104)
+), rate=.4,name='h3')
+
+output_layer <-layer_dense(hidden_layer ,units = 10, activation='softmax',
+                            bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), 
+                            kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104))#,kernel_regularizer = regularizer_l2(l2reg),bias_initializer=initializer_random_uniform(minval = -0.1, maxval = 0.1, seed = 104), kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)) 
+model_2h <- keras_model(inputs = input_layer, outputs = output_layer )
+
+
+
+#,clipnorm=1,,clipvalue=1
+opt <- optimizer_sgd(lr = lr0,momentum=0)
+#opt <- optimizer_rmsprop(lr = lr0,clipnorm=1,clipvalue=1)
+
+compile(model_2h,
+        optimizer = opt, 
+        loss = "categorical_crossentropy", 
+        metrics = c("acc")
+)
+summary(model_2h)
+results_2h=fit(model_2h,t(X),Y,epochs=10,verbose=1,batch_size = 128)
+
+
+yhat =predict(model_2h,t(testX))
+predicted_label = apply(t(yhat),2,which.max)-1
+sum(predicted_label==testY)/length(testY)
+
+
+```
+
+
+**Step 8 Visualizing hidden activations **
+
+It can be useful to visualize what hidden layers are doing.  Use the keras api to get the results of intermediate layers by name and plot the results for layer 1 and layer 2 using the t-SNE libary in R.  t-SNE is a way to visualize high dimensional data in lower dimensions while preserving shape/geometry (ref: [Visualizing Data using t-SNE](http://www.jmlr.org/papers/volume9/vandermaaten08a/vandermaaten08a.pdf))
+
+```{r}
+library(Rtsne)
+layer_name <- 'h1'
+intermediate_layer_model <- keras_model(inputs = model_2h$input,
+                                        outputs = get_layer(model_2h, layer_name)$output)
+intermediate_output <- predict(intermediate_layer_model, t(testX))
+dim(intermediate_output)
+
+#pca
+colors <- rainbow(length(unique(as.factor(testY))))
+
+pca <- princomp(intermediate_output)$scores[, 1:2]
+plot(pca, t='n', main="pca")
+text(pca, labels=testY, col=colors[as.factor(testY)])
+
+tsne <- Rtsne(as.matrix(intermediate_output), dims = 2, perplexity = 30, 
+              verbose = TRUE, max_iter = 500)
+
+plot(tsne$Y, t='n', main="tsne")
+text(tsne$Y, labels=as.factor(testY), col=colors[as.factor(testY)])
+
+# tsne for layer 2
+# h2 not kept got name from summary of model dense 90
+layer_name <- 'dense_90'
+intermediate_layer_model <- keras_model(inputs = model_2h$input,
+                                        outputs = get_layer(model_2h, layer_name)$output)
+intermediate_output2 <- predict(intermediate_layer_model, t(testX))
+dim(intermediate_output2)
+
+# plots for layer 2
+tsne2 <- Rtsne(as.matrix(intermediate_output2), dims = 2, perplexity = 30, 
+              verbose = TRUE, max_iter = 500)
+
+plot(tsne2$Y, t='n', main="tsne layer 2")
+text(tsne2$Y, labels=as.factor(testY), col=colors[as.factor(testY)])
+
+```
+
+
+** Step 9 IMDB sentiment model **
+
+In this step you will be performing sentiment classification (binary) of polarized reviews good and bad.
+
+- Download the imdb data (aka [Large Movie Review Dataset from Stanford](http://ai.stanford.edu/~amaas/data/sentiment/))
+
+- read it in and process the text into a bag of words and measure the performance of logistic regression using bag of words  (for info on bag of words see: [Bag of Words Meets Bags of Popcorn](https://www.kaggle.com/c/word2vec-nlp-tutorial)
+
+- perform text cleaning ( lower case, remove punctuation, stop words, numbers, and stem) like in http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html and https://www.r-bloggers.com/how-to-prepare-data-for-nlp-text-classification-with-keras-and-tensorflow/ (the tm package might be helpful to you) and then build a DocumentTermMatrix and remove sparse word ocurring <2% of time
+
+-DTM or DocumentTermMatrix is a matrix where each review has 1 row and columns are words and values are counts of the word in the document
+
+- try turning stemming off and see if it affects performance ( out of sample performance should be around .839)
+
+```{r}
+imdb_dir <- "./ds/nn_class/rbm/rbm/aclImdb" 
+ train_dir <- file.path(imdb_dir, "train") 
+ labels <- c() 
+ texts <- c() 
+ for (label_type in c("neg", "pos")) { 
+  label <- switch(label_type, neg = 0, pos = 1) 
+  dir_name <- file.path(train_dir, label_type) 
+  for (fname in list.files(dir_name, pattern = glob2rx("*.txt"), full.names = TRUE)) { 
+   texts <- c(texts, readChar(fname, file.info(fname)$size)) ;
+   labels <- c(labels, label) 
+     } 
+ } 
+ 
+
+ # clean text http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html
+ library(tm) 
+ # All lowercase
+ texts= tolower(texts)
+ texts=removePunctuation(texts)
+ texts=removeNumbers(texts)
+ texts=stripWhitespace(texts)
+ # List standard English stop words
+ stopwords("en")
+ texts=removeWords(texts, stopwords("en"))
+ texts=stemDocument(texts)
+ 
+mydtm <- DocumentTermMatrix(VCorpus(VectorSource(texts)))
+mydtm = removeSparseTerms(mydtm,.98)
+mydtm_as_df <- data.frame(docs = rownames(as.matrix(mydtm )), as.matrix(mydtm ), stringsAsFactors = FALSE)
+
+movie_review=data.frame(list(review=texts,sentiment=labels))
+
+#how does bow model perform
+get_train_test=function(xin,y,train_pct=0.5)
+{
+  #train and test  50/50
+  smp_size <- floor(train_pct* nrow(xin))
+  set.seed(123)
+  train_ind <- sample(seq_len(nrow(xin)), size = smp_size)
+  train_data <- as.matrix(xin[train_ind, ])
+  test_data <- as.matrix(xin[-train_ind, ])
+  train_target=y[train_ind]
+  test_target=y[-train_ind]
+  return(list(train_data=train_data,test_data=test_data,train_target=train_target,test_target=test_target))
+}
+
+
+# logit bag of words
+y=labels
+xin=scale(mydtm_as_df[,-1])
+library(zeallot)
+c(train_data ,test_data,train_target,test_target) %<-% get_train_test(xin,y,0.5)
+data=data.frame(cbind(train_data,train_target));
+dim(data)
+m=glm(train_target~.,data=data,family='binomial')
+
+tin=data.frame(cbind(test_data,test_target))
+pred=predict.glm(m,tin,type = "response")
+#pred=predict(m,xin,type = "response")
+sum((pred>=.5)==test_target)/length(test_target)
+
+```
+
+
+**Step 10 **
+
+Bag of words loses information about word order.  Using n-gram features can bring back some order.
+Use bi-grams to enhance the data and build a neural net with an embedding layer to perform sentiment classification on the data as outlined in [Bag of tricks for efficient text classification](https://arxiv.org/pdf/1607.01759.pdf) paper.
+
+- example code can be found on https://github.com/rstudio/keras/blob/master/vignettes/examples/imdb_fasttext.R
+
+- out sample you should get about 90.5% accuracy with a deep net with embedding and global pooling layer added in 5 epochs
+```{r}
+create_ngram_set <- function(input_list, ngram_value = 2){
+  indices <- map(0:(length(input_list) - ngram_value), ~1:ngram_value + .x)
+  indices %>%
+    map_chr(~input_list[.x] %>% paste(collapse = "|")) %>%
+    unique()
+}
+
+add_ngram <- function(sequences, token_indice, ngram_range = 2){
+  ngrams <- map(
+    sequences, 
+    create_ngram_set, ngram_value = ngram_range
+  )
+  
+  seqs <- map2(sequences, ngrams, function(x, y){
+    tokens <- token_indice$token[token_indice$ngrams %in% y]  
+    c(x, tokens)
+  })
+  
+  seqs
+}
+
+
+# Parameters --------------------------------------------------------------
+
+# ngram_range = 2 will add bi-grams features
+ngram_range <- 2
+max_features <- 20000
+maxlen <- 400
+batch_size <- 32
+embedding_dims <- 50
+epochs <- 5
+
+
+# Data Preparation --------------------------------------------------------
+
+# Load data
+imdb_data <- dataset_imdb(num_words = max_features)
+
+# Train sequences
+print(length(imdb_data$train$x))
+print(sprintf("Average train sequence length: %f", mean(map_int(imdb_data$train$x, length))))
+
+# Test sequences
+print(length(imdb_data$test$x)) 
+print(sprintf("Average test sequence length: %f", mean(map_int(imdb_data$test$x, length))))
+
+if(ngram_range > 1) {
+  
+  # Create set of unique n-gram from the training set.
+  ngrams <- imdb_data$train$x %>% 
+    map(create_ngram_set) %>%
+    unlist() %>%
+    unique()
+  
+  # Dictionary mapping n-gram token to a unique integer
+  # Integer values are greater than max_features in order
+  # to avoid collision with existing features
+  token_indice <- data.frame(
+    ngrams = ngrams,
+    token  = 1:length(ngrams) + (max_features), 
+    stringsAsFactors = FALSE
+  )
+  
+  # max_features is the highest integer that could be found in the dataset
+  max_features <- max(token_indice$token) + 1
+  
+  # Augmenting x_train and x_test with n-grams features
+  imdb_data$train$x <- add_ngram(imdb_data$train$x, token_indice, ngram_range)
+  imdb_data$test$x <- add_ngram(imdb_data$test$x, token_indice, ngram_range)
+}
+
+# Pad sequences
+imdb_data$train$x <- pad_sequences(imdb_data$train$x, maxlen = maxlen)
+imdb_data$test$x <- pad_sequences(imdb_data$test$x, maxlen = maxlen)
+# in home
+save(imdb_data, file='imdb_data_ngrams')
+# Model Definition --------------------------------------------------------
+
+model <- keras_model_sequential()
+
+model %>%
+  layer_embedding(
+    input_dim = max_features, output_dim = embedding_dims, 
+    input_length = maxlen
+  ) %>%
+  layer_global_average_pooling_1d() %>%
+  layer_dense(1, activation = "sigmoid")
+
+model %>% compile(
+  loss = "binary_crossentropy",
+  optimizer = "adam",
+  metrics = "accuracy"
+)
+
+
+# Fitting -----------------------------------------------------------------
+
+model %>% fit(
+  imdb_data$train$x, imdb_data$train$y, 
+  batch_size = batch_size,
+  epochs = epochs,
+  validation_data = list(imdb_data$test$x, imdb_data$test$y)
+)
+
+
+
+####################################################
+
+model2 <- keras_model_sequential()
+model2 %>%
+  layer_embedding(
+    input_dim = max_features, output_dim = embedding_dims, 
+    input_length = maxlen
+  ) %>%
+  layer_global_average_pooling_1d() %>%
+  layer_dense(200, activation = "relu",
+              bias_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)
+              , kernel_initializer=initializer_random_normal(mean=0,stddev=.1, seed = 104)
+              ,kernel_regularizer = regularizer_l2(.000000001)) %>%
+  layer_dense(100, activation = "relu") %>%
+  layer_dropout(rate = 0.3) %>%
+  layer_dense(20, activation = "relu") %>%
+  layer_dense(1, activation = "sigmoid")
+
+model2 %>% compile(
+  loss = "binary_crossentropy",
+  optimizer = "rmsprop",
+  metrics = "accuracy"
+)
+
+
+# Fitting -----------------------------------------------------------------
+
+model2 %>% fit(
+  imdb_data$train$x, imdb_data$train$y, 
+  batch_size = batch_size,
+  epochs = 50,
+  validation_data = list(imdb_data$test$x, imdb_data$test$y)
+)
+
+```
+
+
+** Step 11 **
+
+Review and try following tutorials on how to build a 1-d conv-net and ltsm on the imdb task and measure peformance using tutorials (try different optimizers and see how peformance changes):
+-   for e.g. https://tensorflow.rstudio.com/keras/articles/examples/imdb_cnn.html  (i got about 86%  oos performance with adam but using nestorov nadam I got 89%)
+-  https://github.com/rstudio/keras/blob/master/vignettes/examples/imdb_lstm.R  (low 80s surprisingly;maybe data is too small for a good ltsm)
+
+- pre-trained embedding model https://keras.rstudio.com/articles/examples/pretrained_word_embeddings.html
+
+A useful set of tutorials that you might find handy for your projects is:
+- https://tensorflow.rstudio.com/examples/
