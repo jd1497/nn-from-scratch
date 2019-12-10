@@ -1,0 +1,62 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+-softmax (hidden layer): for neural network
+Information theory- how much info is in the event with certain probability
+-events less likely = surprise (b/c more information with lower probability)
+-if two events are independent, then you'd know infor
+-joint event
+log(1/p) for one event
+
+-log(p) or log(1/p)
+-entropy: expected value of the information(avg info you get when you sample from that info)
+-entropy maximized for certain information
+
+slide 9: log is monotonic increasing-> log(a)>log(b) when a is increasing faster than b
+negative of a log is convex. log is concave
+
+
+Jensen's inequality: take a line in two points, plot a curve
+
+slide 12: p add up to 1. ln is concave
+
+measure of how close probability is: Kullback-Liebler
+KL divergence (slide 16): good cost function
+discrete function, not continuous
+
+minimize KL by minimizing cross entropy: slide 15 [hw]
+
+look at prob that y can be 1 all the way to prob that y can be k :slide 18
+allow us to end up with probability that end up to be 1
+
+if x value is large, can be numerical overflow (so have numerical stability)
+
+slide 30: unique output: softmax- look for most likely prob.
+if do binary and then train, then can look for answers for other prob.
+
+
+derivative of a cost with respect to z
+
+Pt 2 slide 10: back propegation/ efficient training
+
+-bectors: nonlinear activations: w1=w2 for slide 15
+
+-slide 27: most likely on exam:Neilson's
+
+```{r}
+help("seq")
+```
+

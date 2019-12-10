@@ -1,0 +1,118 @@
+---
+title: "hw1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(zeallot)
+set.seed(1234)  # set seed so same data generated on each knit
+```
+
+**Background**
+
+Homework assignments for Math 514 will be prepared using R Markdown. R Markdown is a file format for making dynamic documents with R. R Markdown files support reproducible research and can contain text, equations (latex), R code, images and graphics.
+
+If you are unfamiliar with R Markdown, please review
+
+- Using R Markdown for Class Reports: http://www.stat.cmu.edu/~cshalizi/rmarkdown/
+- R Markdown cheat sheet: https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+
+LaTeX is the most common system for typesetting mathematics. The reference [Using R Markdown for Class Reports](http://www.stat.cmu.edu/~cshalizi/rmarkdown/) has a good section on including math in R Markdown. LaTex can be daunting at first, so using a GUI can be a big help. We have found the online GUI [CodeCogs](https://www.codecogs.com/latex/eqneditor.php) to be very helpful. With a little experimentation you should be able to use the GUI to generate LaTex that you then copy/paste back into your R Markdown document.
+
+
+**Homework 1 Problem Statement**
+
+Homework 1 is unusual because we have already done it for you - except for the 6 questions at the very end. You should also make sure you understand the R code.  Please type in answers for the last section and knit the document for submission along with the .Rmd in the project folder zip as instrument in homework submission guidelines announcement on canvas.
+
+This assignment covers Bayes' Error using a simple 1-dimensional classification problem. The problem is to simulate the tossing of two coins with different probabilities to be heads. An experiment will consist of tossing a randomly chosen coin N times. The problem is to determine (classify) which coin was chosen.
+
+The classifier will be built using Bayes' Rule. Classifier testing data will be generated using simulated coin tosses. The testing data will consist of M experiments (each with N tosses).
+
+**Step 1**
+
+First, write a function called *coin.toss* to simulate a set of coin toss experiments that allows you to input the probability of heads p. 
+
+Your function should take as input
+
+- The probability of success (heads) p.
+- The number of tosses in an experiment N.
+- The number of experiments to run M.
+
+The function should return the simulated coin toss data as an array with dimensions M x N. That is, each experiment is a row in the returned matrix. Use a value of 1 for head and 0 tail.  Use runif function in R to create the data in a vectorized approach.
+
+  
+```{r}
+coin.toss=function(p,num.tosses,num.trials){
+  #first generate random numbers between 0 and 1
+  #tosses can be generated in a vectorized call producing num_toss*num.trials draws 
+  draws=runif(num.tosses*num.trials)
+  results=matrix(1*(draws < p),nrow=num.trials)
+  return(results)
+}
+```
+
+**Step 2**
+
+Next, write a second function called *create.coin.toss.data* that uses *coin.toss* to generate the training data. It should take as input:
+
+- N = the number of tosses in an experiment
+- M1 = the number of experiments using coin 1
+- p1 = the probability of success for coin 1
+- M2 = the number of experiments using coin 2
+- p2 = the porbability of success for coin 2
+
+The function should return a matrix and a vector. The matrix should be M1+M2 rows by N columns - one row for each experiment. The vector should be M1+M2 long and contain the *tag* for each row in the matrix. Randomize the data on return.
+
+
+```{r}
+create.coin.toss.data=function(n,m1,p1,m2,p2){
+  c1=coin.toss(p1,n,m1)
+  c2=coin.toss(p2,n,m2)
+  data=rbind(c1,c2)
+  y = c(rep(0,m1),rep(1,m2))
+  
+  # what do the following lines of code do?
+  i = sample(1:nrow(data))
+  return(list(x=data[i,],y=y[i]))
+}
+
+```
+
+**Step 3: Expected Value (try some LaTeX)**
+
+Each experiment consists of N 0-1 outcomes each with probability. 
+
+Derive the following: 
+
+- The expected value and variance of a Bernoulli random variable with $P(X=1)=\theta$. 
+- Then compute the expected value and variance of $Y=(1/N)\Sigma_i X_i$ for $i=1 \ldots N$.
+
+$$P(X=x|\theta)=\theta^{x}(1-\theta)^{(1-x)}$$
+where lower case x is $\in$ {0,1} and $\theta$ stands in for p1 or p2, depending on the coin. Compute the expected value of this random variable (show calculation in LaTex).
+$$E[X]=\sum_{i}x_i\,P(X=x_i)=0\cdot P(X=0)+1\cdot P(X=1)=0\cdot(1-\theta)+1\cdot\theta=\theta$$
+
+Now compute the variance of X
+$$ \sigma^2=Var(X)=E[(X-E[X])^2]=(0-\theta)^2(1-\theta)+(1-\theta)^2\theta=(1-\theta)(\theta^2+\theta(1-\theta))=\theta(1-\theta)$$
+Use these results to compute $E[Y]$ and $Var[Y]$ 
+$$E[Y]=E[\frac{1}{N}\Sigma_{i=1}^{N}X_i]=\frac{1}{N}\Sigma_{i=1}^N(E[X_i])=\theta$$
+$$Var[Y]=Var[\frac{X_1+X_2+\cdots X_n}{N}]=\frac{1}{N^2}(Var(X_1)+\cdots +Var(X_N))=\frac{N}{N^2}Var(X)=\frac{\theta(1-\theta)}{N}$$
+
+http://stat.math.uregina.ca/~kozdron/Teaching/UBC/302Fall10/Handouts/normal_approx_to_bin.pdf
+
+**Step 4: Try some graphics**
+
+Call your functions to generate 100 experiments with the following parameters:
+
+- n = 64
+- m1= 40
+- p1= .4
+- m2= 60
+- p2= .5
+
+Plot histograms of the number of heads for both coins (same plot). Use the multiple assignment operator "%<-%" operator from the *zeallot* package to get data from your function.
+  
+```{r}
+n=64
+m1=40; p1=.4;
+m2=60; p2=.5;
