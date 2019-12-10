@@ -1,0 +1,453 @@
+---
+title: "h5_514"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+**Homework 5 Problem Statement**
+
+This assignment will take more time than previous assignments. Function prototypes are not provided since they should be familiar from earlier assignments
+
+In this assignment you will implement a neural-network with 1 hidden layer. The model will have 2 sets of biases and 2 sets of weights.
+
+The code should be configurable so the output layer can support linear, logistic or softmax models. In our solution, we reset global function names based on model type. For example, say your program uses the function name "cost" for the cost function. Also, assume you write "cost.squared.error" for squared error, "cost.negll" for negative log-likelihood and "cost.cross.entropy" for cross-entropy. (You have written each of these in previous assignments)
+
+To configure for a linear model: cost=cost.squared.error
+To configure for a logistic model: cost=cost.negll
+To configure for a softmax model: cost=cost.cross.entropy
+
+We found it necessary to configure 4 global functions
+1. cost       - the cost function
+2. f          - the hidden layer activation function, used in fwd.prop
+3. df         - the derivative of the hidden layer activation function, used in bk.prop
+4. g          - the output layer activation function, used in fwd.prop
+
+There are other ways to make your solution configurable, so please feel free to use a different approach.
+
+Other important functions for this homework will be:
+- bk.prop
+- fwd.prop
+- init.wgts
+- nnet1.fit
+- nnet1.fit.batch
+- fit
+- predict
+
+
+
+**Step 1 Generate data**
+
+Use the mlbench library to generate a spiral data set for binary classification. 
+
+```{r}
+source('hw5_514.R')
+library(mlbench)
+data=mlbench.spirals(75,1.5,.07)
+plot(data)
+X=t(data$x)
+Y=matrix(as.integer(data$classes)-1,nrow=1)
+```
+
+
+**Step 2 implement 3 cost functions**
+
+- Squared error for a linear model
+- Negative log-likelihood for a logistic model
+- Cross-entropy for a softmax model
+
+
+```{r}
+print.fun('cost.squared.error')
+print.fun('cost.negll')
+print.fun('cost.cross.entropy')
+```
+
+**Step 3 Implement 3 output activation functions**
+
+- Use the identity function for a linear model
+- Use the sigmoid function for a logistic model
+- Use the numerically stable softmax function for a softmax model
+
+```{r}
+print.fun('identity')
+print.fun('sigmoid')
+print.fun('stable.softmax')
+```
+
+
+
+**Step 4 Implement 3 hidden layer activation functions**
+
+Implement the following activation functions along with their derivatives
+
+- ReLU activation
+- tanh activation (built-in R function)
+- sigmoid activation
+
+test each of the derivatives using a numerical gradient calculation on activation function 
+
+```{r}
+
+```
+
+
+
+
+
+
+```{r}
+print.fun('sigmoid')
+print.fun('relu')
+print.fun('tanh')
+
+print.fun('dsigmoid')
+print.fun('drelu')
+print.fun('dtanh')
+
+# check sigmoid
+ d=runif(10)
+ (sigmoid(d+10^-8)-sigmoid(d-10^-8))/(2*10^-8)-dsigmoid(d)
+
+#check relu
+ (relu(d+10^-8)-relu(d-10^-8))/(2*10^-8)-drelu(d)
+
+#check tanh
+ (tanh(d+10^-8)-tanh(d-10^-8))/(2*10^-8)-dtanh(d)
+
+```
+
+```{r}
+(sigmoid(d+10^-8)-sigmoid(d-10^-8))/(2*10^-8)
+
+```
+```{r}
+dsigmoid(d)
+```
+
+```{r}
+#check relu
+ (relu(d+10^-8)-relu(d-10^-8))/(2*10^-8)
+
+```
+
+
+```{r}
+drelu(d)
+```
+
+```{r}
+#check tanh
+ (tanh(d+10^-8)-tanh(d-10^-8))/(2*10^-8)
+```
+
+```{r}
+dtanh(d)
+```
+
+
+**Step 5a Implement fwd.prop/bk.prop**
+
+- fwd.prop: Propagates input data matrix through the network and produces the output activation values needed by the cost functions. Note that bk.prop needs intermediate values computed by fwd.prop.
+
+- bk.prop: Computes analytical gradients of the cost function w.r.t model parameters. 
+
+```{r}
+fwd.prop=function(f,g,x,b1,w1,b2,w2){
+  a0=x
+  onemat = matrix(1,ncol=ncol(a0))
+  Z = (b1 %*% onemat) + (w1 %*% a0)
+  a1 = f(Z)
+  Z2 = (b2 %*% onemat) + (w2 %*% a1)
+  a=g(Z2)
+  return(a)
+}
+```
+
+
+
+
+
+
+```{r}
+bk.prop=function(x,y,b1,w1,b2,w2,f,g,df){
+  m= ncol(x)
+  a = x
+  onemat = matrix(1,ncol=ncol(a))
+  a1 = f((b1 %*% onemat) + (w1 %*% a))
+  fprop = fwd.prop(f,g,x,b1,w1,b2,w2)
+  t=one.hot(t(y))
+  dz=fprop-t
+  db2 = rowSums(dz) #*(1/m)
+  dw2 = (rowSums(dz)%*%t(a1))#*(1/m)
+  d = df((b1 %*% onemat) + (w1 %*% a))
+  dz = d * (t(w2)%*%dz)
+  db1 = rowSums(dz)
+  dw1 = (rowSums(dz)%*%t(a))
+  return(db1=db1,dw1=dw1,db2=db2,dw2=dw2)
+}
+```
+
+
+```{r}
+print.fun('fwd.prop')
+print.fun('bk.prop')
+
+```
+
+
+
+
+
+**Step 5b Numerically check gradients**
+
+-Implement a numerical gradients function and use it to test each of the 3 cost functions. You can used tanh for the hidden activation function for the gradient checking for all 3 cost functions.  
+
+- Test gradients for squared error cost with identity output activation using data from data.lawrence.giles function provided
+- Test gradients for negative log-likelihood error with sigmoid output activation using data from spiral data
+- Test gradients for cross-entropy error with numerically stable softmax output activation using data for 3 class mixture provided below
+
+```{r}
+num.gradient=function(cost,x,y,b1,w1,b2,w2,eps=1e-8,f,g){
+  dwi=numeric(length(w1))
+  dwi2=numeric(length(w2))
+  db1=numeric(length(b1))
+  db2=numeric(length(b2))
+  for (i in 1:length(b1)){
+    bp=bm=b1
+    bp[i]=bp[i]+eps
+    bm[i]=bm[i]-eps
+    db1[i]=( cost(x,y,bp,w1,b2,w2,f,g)-cost(x,y,bm,w1,b2,w2,f,g))/(2*eps)
+  }
+  for (i in 1:length(w1)){
+    wp=wm=w1
+    wp[i]=wp[i]+eps
+    wm[i]=wm[i]-eps
+    dwi[i]=( cost(x,y,b1,wp,b2,w2,f,g)-cost(x,y,b1,wm,b2,w2,f,g))/(2*eps)
+  } 
+  for (i in 1:length(b2)){
+    bp2=bm2=b2
+    bp2[i]=bp2[i]+eps
+    bm2[i]=bm2[i]-eps
+    db2[i]=( cost(x,y,b1,w1,bp2,w2,f,g)-cost(x,y,b1,w1,bm2,w2,f,g))/(2*eps)
+  }
+  for (i in 1:length(w2)){
+    wp2=wm2=w2
+    wp2[i]=wp2[i]+eps
+    wm2[i]=wm2[i]-eps
+    dwi2[i]=( cost(x,y,b1,w1,b2,wp2,f,g)-cost(x,y,b1,w1,b2,wm2,f,g))/(2*eps)
+  } 
+  dw1 = matrix(dwi,ncol=ncol(w1),nrow=nrow(w1))
+  dw2 = matrix(dwi2,ncol=ncol(w2),nrow=nrow(w2))
+  return(list(db1=db1,dw1=dw1,db2=db2,dw2=dw2))
+}
+
+
+
+```
+
+
+```{r}
+num.gradient(tanh)
+```
+
+
+**Step 6 implement a training algorithm **
+
+You will code two training algorithms. The first will do simple gradient descent using the full input data to compute gradients. As in previous assignments, you will find it necessary to save information after each epoch. Implement a function that trains using the full input data called nnet1.fit
+
+For training of your neural net the weights and bias are initialized. The init.wgts function is provided in the R file. Feel free to write a more general function that allows experimentation with different types of bias/weight initialization
+
+```{r}
+
+print.fun('init.wgts')
+# call init.wgts - data samples are arranged by column
+model=init.wgts(n.in=nrow(X),n.hid=1,n.out=nrow(Y))
+
+model
+
+softmax.fit=function(X,Y,lr=.01,max.its=100,b,w){
+  trace=list()
+  M=ncol(X)
+  for(i in 1:max.its){
+    fp=fwd.prop(f,g,x,b1,w1,b2,w2)
+    bp=bk.prop(X,Y,fp)
+    b = b - lr*bp$db
+    w = w - lr*bp$dw
+    g=sum((bp$dw)^2)
+    ww=sum(w*w)
+    cn=cost(fp$A1,Y)
+    if(i%%100==0)print(paste(i,":",cn,ww,g))
+    trace[[i]]=list(cost=cn,b=b,w=w,g=g,ts=Sys.time())
+  }
+  trace
+}
+
+#print.fun('nnet1.fit')
+
+```
+
+
+**Step 7 Train linear model using Giles/Lawrence data**
+
+Fit 3 linear models (squared error) to the Lawrence/Giles data with 2, 5 and 100 hidden nodes respectively. Use the tanh hidden layer activation function. Plot the resulting fits and compare them to an order 15 polynomial fit. You should find that adding lots of hidden nodes does not cause overfitting.
+
+For our runs we used 150,000 iterations with a learning rate of .1. Feel free to experiment with other parameters and other activation functions.
+
+
+```{r}
+
+  c(X,Y,xgrid,ygrid) %<-% data.lawrence.giles(12345)
+ 
+  np=length(X)
+ 
+x.set=c(X)
+y.set=c(Y)
+degree=15  
+lm.fit = lm(y ~ poly(x,degree,raw=FALSE), data=data.frame(y=y.set,x=x.set))
+y = predict.lm(lm.fit,data.frame(x=xgrid))
+plot(y)
+points(xgrid,y,type="l",col="black",lwd=2)
+legend("topright", legend = c(num_hidden,paste("degree=",degree)), col = colors,lwd=2 )
+
+```
+
+
+**Step 8 Train binary classifier using spiral data**
+
+Train a neural net to predict binary classes for the mlbench.spirals data introduced earlier.  Using the neg log likelihood cost function compare performance of the 3 activation functions (tanh, sigmoid, and relu)  for 5 vs 100 hidden units.
+
+- Train a neural net on the spiral binary classification data  using a sigmoid activation function for the output layer and compare tanh, sigmoid and relu results for 5 vs 100 hidden units. For relu and tanh use a learning rate of 0.5 and for sigmoid use a learning rate of 3
+
+- Plot the performance histories of all 6 model combinations in one plot
+
+- look at the decision boundary, cost history and performance history of relu with 100 hidden units and sigmoid models with 100 hidden units with a learning rate of 3.  You will notice that relu model converges faster with fewer hidden units than relu
+
+```{r}
+
+data=mlbench.spirals(75,1.5,.07)
+X=t(data$x)
+Y=matrix(as.integer(data$classes)-1,nrow=1)
+X0=X
+Y0=Y
+n = nrow(X)  # number of input nodes
+M = ncol(X)  # number of samples
+
+data$color=as.integer(data$classes)+2
+
+```
+```{r}
+
+
+
+
+```
+
+
+```{r}
+
+```
+
+**Step 9 Train a softmax model on MNIST data**
+
+Train a neural network on the 60k MNIST training data and measure performance on test set using cross-entropy cost function and relu activation. Look at performance and plot of performance history.  Use a learning rate of 0.15 and 30 hidden units and 50 epochs.
+
+-Plot in sample and out of sample performance history of the model
+
+```{r}
+
+mnist = list(train=load_image_file("train-images.idx3-ubyte"),test=load_image_file("t10k-images.idx3-ubyte"))
+mnist[["train"]]$y = load_label_file("train-labels.idx1-ubyte")
+mnist[["test"]]$y = load_label_file("t10k-labels.idx1-ubyte")  
+
+
+
+
+```
+
+**Step 10 Implement a mini-batch gradient descent training algorithm**
+
+Mini-batch gradient descent converges faster than gradient descent and is a necessity when data sets are large. Re-implement your training function from step 6 as nnet1.fit.batch to break each epoch into a set of mini-batches. nnet1.fit.batch will need an additional batch.size parameter.
+
+Mini-batch GD adds a loop inside the epoch/iterations loop. Your mini-batches should divide the dataset into randomly chosen samples of size batch.size. It is also best practices to use different random samples for each epoch.
+
+
+```{r}
+print.fun('nnet1.fit.batch')
+```
+
+** Step 11 Try 3 mini-batch sizes on spiral data **
+
+- Compare cost histories and performance histories using MNIST and nnet1.fit.batch for mini-batch sizes of 32, 64 and 128
+
+- how does this compare against the full gradient descent neural network model from step 9
+
+```{r}
+data=mlbench.spirals(75,1.5,.07)
+X=t(data$x)
+Y=matrix(as.integer(data$classes)-1,nrow=1)
+
+
+
+```
+
+** Step 12 train using mini-batch gradient descent on MNIST**
+
+- Train a neural network using nnet1.fit.batch using  a batch size of 30 with learning rate of 0.15 compare out of sample performance of this model against out of sample performance of neural net trained on full gradient descent.  For the mini-batch model use 10 epochs and for the full model use 50
+
+
+
+```{r}
+
+
+
+mnist = list(train=load_image_file("train-images.idx3-ubyte"),test=load_image_file("t10k-images.idx3-ubyte"))
+mnist[["train"]]$y = load_label_file("train-labels.idx1-ubyte")
+mnist[["test"]]$y = load_label_file("t10k-labels.idx1-ubyte")  
+
+
+train_set=sample(1:dim(mnist$train$x)[1], size = 60000)
+X=t(mnist[["train"]]$x[train_set,])/255.
+y=mnist[["train"]]$y[train_set]
+Y=one.hot(y)
+
+testX=t(mnist[["test"]]$x)/255.
+testY=mnist[["test"]]$y
+
+M=ncol(X)
+b=numeric(10)
+w=matrix(rnorm(10*784),nrow=10,ncol=784)
+
+n = nrow(X)  # number of input nodes
+n.out = nrow(Y)
+M = ncol(X)  # number of samples
+
+# it would be nice to add split cost/accuracy plot
+nh=30
+lr=.15
+
+
+```
+```{r}
+dim(X)
+```
+
+
+**Step 13 Compare impact of hidden units on mini-batch**
+
+- Using minibatch of size 32 and learning rate of 0.15 compare the performance of the model for 5, 10,30 hidden units out of sample
+
+```{r}
+lr=.15
+perf=vector(mode='list')
+counter=1
+num_hidden =c(5,10,30)
+
+
+```
+
+
+
+
+

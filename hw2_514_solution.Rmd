@@ -1,0 +1,265 @@
+---
+title: "HW2"
+output:
+  html_document:
+    df_print: paged
+---
+
+**Homework 2 Problem Statement**
+In this homework you will implement several versions of the perceptron algorithm and implement the fisher linear discriminant.  In addition to this markdown file there is a another file called *perceptrons_functions_hw.R*, which contains helper functions and code stubs that need to be completed.
+
+A good reference on perceptron algorithms is [The Perceptron Chapter by Hal Daume ](http://ciml.info/dl/v0_99/ciml-v0_99-ch04.pdf) 
+
+Starting with this homework you will develop code in a .R file. Once you have debugged your code you will then use those functions to complete this markdown file. 
+
+**Step 1 Load functions **
+Create a chunk to do the following:
+
+- Source the perceptron_functions.R file.  
+- Run ls.str to see which functions are loaded in your environment 
+- print.fun('name') will print the named function. Use this function to display the code for print.fun and perceptron.box.data
+
+```{r}
+source('./perceptron_functions.R')
+```
+
+You can see the effect of sourcing by checking the objects in your environment using ls.str()
+
+```{r}
+ls.str()
+```
+
+One of the helper functions provided is called *print.fun*. You use *print.fun* to display your code inside the markdown document. For example:
+
+```{r}
+print.fun('print.fun');
+print.fun('perceptron.box.data');
+```
+
+**Step 2 Create data **
+
+Use the perceptron.box.data function to create a dataset of size 100 with  gamma=0.05.  Then plot the data.
+The gap between the datasets is 2*gamma.
+
+```{r}
+set.seed(123)
+gamma=.05
+data=perceptron.box.data(100,gamma);
+plot.perceptron.box.data(data);
+```
+
+**Step 3 Write functions to train and test the vanilla perceptron**
+
+Implement a function called train.perceptron that takes as input x data and an outcome y and number of epochs of training to be performed.  This function will implement the perceptron training rule to adjust weights when mistakes are encountered and stop updating weights when no mistakes occur.
+
+Test your function on data generated from the perceptron.box.data function and plot perceptron decision boundary.
+Note: you will need to save source your code to in the perceptron_functions_hw.R and source the code before you can call it in this notebook.
+
+In addition implement a predict.perceptron function that takes input as w (weights returned from perceptron train),
+b (intercept learned from perceptron.train) and applies the learned weights to predict data x.
+Comments in the homework fill explain the inputs and outputs the functions should generate.
+
+use the abline function in R to plot the decision boundary (Hint: the intercept a is -b/w[2] and slope is -w[1]/w[2] ; you will be doing this for all models later excepted voted which does not have a single line)
+
+```{r}
+  y = data[,ncol(data)]
+  x = data[,-ncol(data)]
+  library(zeallot)
+  c(w,b,mistakes) %<-% perceptron.train(x,y)
+  print(mistakes)
+  plot.perceptron.box.data(data)
+  abline(a=-b/w[2],b=-w[1]/w[2])
+```
+
+
+
+**Step 4 Test vanilla perceptron on out of sample data and plot**
+Using a gamma of .05, generate an out of sample data set using perceptron.box.data (100 observations). Use your *predict.perceptron* function to classify the out of sample data check performance. Use a plot to visually cross-check your performance.
+```{r}
+    
+  #test
+  gamma=.05
+  test=perceptron.box.data(100,gamma);
+  #c(w,b,mistakes) %<-% perceptron.train(x,y)
+  plot.perceptron.box.data(test,'Out of Sample perceptron perf')
+  abline(a=-b/w[2],b=-w[1]/w[2])
+  
+  pred=predict.perceptron(w,b,test[,-ncol(test)])
+  table(pred==test[,ncol(test)])
+```
+
+**Step 5 Run experiments to test empirical bound on the number of mistakes perceptron makes**
+
+Verify that the number of mistakes made by your perceptron training algorithm fall within the theoretical limits. 
+
+For gamma in *seq(.1,1,length.out = 10)*, train 10 models for each value of gamma and average the number of mistakes. Plot avg. number of mistakes vs theoretical limit of number of mistakes. Use 100 observations for each of the 100 datasets.
+
+The Perceptron Convergence Proof shows that  $\lt \frac{R^2}{\gamma^2}$ where $R^2$ is the maximum euclidean norm of the observations in the data.   The bound on mistakes is this $4 \frac{(\max \left \| x \right \|)^2}{\gamma^2}$
+
+Compute the theoretical limit for each gamma and plot this against the avg. empirical number of mistakes in your experiments.
+
+
+```{r}
+epochs=100
+num_trials=10
+trials=vector(mode="list")
+bounds=vector(mode="list")
+data=vector(mode="list")
+# for each gamma generate a dataset and get 10 trials of random order
+gammas=c(.1,.2,.3,.4,.5,.6,.7,.8,.9,1)
+for (j in 1:length(gammas)){
+  data[[j]]=perceptron.box.data(100,gammas[j])
+  bounds[[j]]=4*max(apply(data[[j]], 1, euclidean.norm))^2/(gammas[j]^2)
+  trials[[j]]=run.experiments(data[[j]],num_trials,epochs)
+}
+
+# mistakes and bound
+agg=lapply(trials, function(x) matrix(unlist(x),ncol=4,byrow=TRUE))
+avg_mistakes=unlist(lapply(agg, function(x) mean(x[,1])))
+plot(gammas,unlist(bounds),main= 'Average # of Mistakes  vs. Theoretical Limit',type='l',col='red')
+  legend("topright", legend = c("Avg # of Mistakes","Theoretical Limit"), 
+  col = c('blue','red'),lty=1,lwd=1 )
+lines(gammas,avg_mistakes,col='blue')
+```
+
+
+ 
+**Step 6 Implement voted perceptron**
+Implement the voted perceptron algorithm described in https://cseweb.ucsd.edu/~yfreund/papers/LargeMarginsUsingPerceptron.pdf .  Implement the function called 
+freund.voted.perceptron.train which has x,y, and number of epochs as input and returns a list called history which will contain the weights w, b intercept and cost based on survival time for weight change and also return the number of mistakes that occured during training.
+
+In addition implement the function predict.voted that will use the output of the voted algorithm and use it to classify a data set x.
+
+Then train and test the voted perceptron using these functions on sample data of 100 observations with gamma of .1 and print the number of correct predictions.  For test use the predict.voted a new sample of generated data from perceptron.box.data
+
+Voted perceptron outputs an ensemble of weights and survival times which are used to made a decision.  You might find it helpful to use more functions to make your code easy to debug.
+
+```{r}
+print.fun('freund.voted.perceptron.train');
+
+data=perceptron.box.data(100,.1);
+f=freund.voted.perceptron.train(data[,1:2],data[,3],200)
+pred=predict.voted(f$history,data[,1:2])
+f$mistakes
+table(pred==data[,3])
+
+test=perceptron.box.data(100,.1)
+pred=predict.voted(f$history,test[,1:2])
+f$mistakes
+table(pred==test[,3])
+
+```
+
+**Step 7 Average Perceptron**
+Implement the avg.perceptron.train function in the perceptron_functions.R file and test against same data out of sample and plot results.  Use the same *predict.perceptron* function from earlier to test perceptron generated by avg.perceptron.train.
+
+using a gamma of .05 generate data to train and test the avg and vanilla perceptron on out of sample data.
+Plot the decision boundary of the 2 models against out of sample data using the plot.perceptron.box.data function.
+Plot vanilla perceptron using a black line and avg perceptron using a red line and use a legend in your plot.
+
+
+```{r}
+print.fun('avg.perceptron.train');
+ gamma=.05
+  data=perceptron.box.data(100,gamma);
+  y = data[,ncol(data)]
+  x = data[,-ncol(data)]
+  c(w.avg,b.avg,mistakes.avg) %<-% avg.perceptron.train(x,y)
+    
+  #test
+   gamma=.05
+  test=perceptron.box.data(100,gamma);
+  #c(w,b,mistakes) %<-% perceptron.train(x,y)
+  plot.perceptron.box.data(test,'Out of Sample perceptron perf of avg perceptron  vs vanilla percep')
+  legend("topright", legend = c("vanilla percep","avg percep"), 
+  col = c('black','red'),lty=1,lwd=1 )
+    abline(a=-b/w[2],b=-w[1]/w[2],col='black')
+  abline(a=-b.avg/w.avg[2],b=-w.avg[1]/w.avg[2],col='red')
+```
+
+
+
+**Step 8 Implement fisher discriminant function**
+Bishop's section on Fisher discriminant might be useful to you: https://www.microsoft.com/en-us/research/uploads/prod/2006/01/Bishop-Pattern-Recognition-and-Machine-Learning-2006.pdf (page 186)
+
+In order to make this document a self-contained piece of reproducible research enter the equations describing the calculations in the *fisher* function.
+
+Fisher condition
+$$J=\frac{(m_2-m_1)^2}{S_1^2+S_2^2}$$
+
+
+$$\begin{aligned}
+S_i &= \sum_{x \in C_i} (\mathbf{x}-\mathbf{m}_i) (\mathbf{x}-\mathbf{m}_i)^T \\
+&= \mathbf{w}^T \sum_{x \in C_i} (\mathbf{x}-\mathbf{m}_i)(\mathbf{x}-\mathbf{m}_i)^T \mathbf{w} \\
+\end{aligned}$$
+$$ S_w = S_1+S_2$$
+$$\mathbf{w}\sim S_w^{-1}(\mathbf{m_2}-\mathbf{m_1})$$
+
+
+**Step 9 Compare fisher to vanilla and avg perceptron for non-separable data**
+
+
+ -Implement a function called fisher to compute the fisher discriminant using the equations documented above (step 8).The fisher function returns the direction vector w and the global mean for box data x, y. 
+
+- Print the fisher function in a code chunk using print.fun.
+
+- Generate non-separable data by calling the perceptron.box.data function with a gamma of -0.05.
+
+- Use the provided function *fisher.2d.line* to compute the slope and intercept given the output of fisher function (w,m)
+
+- Apply vanilla perceptron, avg perceptron and fisher discriminant to the non-separable data and plot the decision boundaries for all three algorithms  on out of sample data (fisher decision boundary should be purple, avg perceptron in red and vanilla perceptron black).  Add a legend to the plot.
+
+
+```{r}
+
+  print.fun('fisher')
+  data=perceptron.box.data(100,-.05);
+  y = data[,ncol(data)]
+  x = data[,-ncol(data)]
+  
+  c(w.avg,b.avg,mistakes.avg) %<-% avg.perceptron.train(x,y)
+  c(w,b,mistakes) %<-% perceptron.train(x,y)
+ 
+  c(f.w,f.m)%<-% fisher(x,y)
+  c(f.a,f.b)%<-% fisher.2d.line(f.w,f.m)
+  test=perceptron.box.data(100,-.05)
+  plot.perceptron.box.data(test,'Out of Sample perf on non-seperable data')
+  legend("topright", legend = c("fisher", "vanilla percep","avg percep"), 
+  col = c('purple','black','red'),lty=c(2,1,1), lwd=c(7,1,1))
+  abline(f.a,f.b,col='purple',lty=2, lwd=7)
+  abline(a=-b/w[2],b=-w[1]/w[2],col='black')
+  abline(a=-b.avg/w.avg[2],b=-w.avg[1]/w.avg[2],col='red')
+  
+
+```
+
+**Step 10 Write a margins function to compare the models**
+
+Implement a function called margin that will compute the margin for the model on given data x using w,b.
+Use this function to compare the 3 models on out of sample data.
+
+
+Similar to experiments in other homeworks generate 10 trials of different data samples with gamma of -.05 and compare the mean margins of the points for the 3 decision boundaries learned earlier.
+
+Which model seems to perform best (largest positive margin)?
+
+```{r}
+  results_vanilla=vector(mode='list')
+  results_avg=vector(mode='list')
+  results_fisher=vector(mode='list')
+  
+  for (i in 1:10){
+    test=perceptron.box.data(100,-.05)
+    results_vanilla[[i]]=round(margin(b,w,test))
+    results_avg[[i]]=round(margin(b.avg,w.avg,test))
+    results_fisher[[i]]=round(margin(f.b,f.w,test))
+  }
+  print(paste('The mean margin of vanilla perceptron is',mean(unlist(results_vanilla))))
+  print(paste('The mean margin of avg perceptron is',mean(unlist(results_avg))))
+  print(paste('The mean margin of fisher discriminant is',mean(unlist(results_fisher))))
+  
+```
+
+
+
+

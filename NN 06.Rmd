@@ -1,0 +1,217 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+-might do well on training data, but not on test data (Slide 3)
+-sharp vs flat minimum
+-diff types of regularization, which works best (so project ideas)
+
+SLide 4:
+-How not to build a model (rare to have a fraud)
+-don't want to send wrong data in the training
+-need good decisions on what to use data, what to use in terms of techniques, etc
+
+Slide 5:
+-need distribution of training data
+-create useful features, good deploy, then use the test that has the same consistency as the training data
+-but could be complicated
+
+Slide 6:
+-build net-> test -> model fails at certain things -> go back and train again
+
+Slide 7:
+framework part-> pretty easy, then reproduce everything with a framework
+
+-data scaling, etc
+
+Slide 8:
+How to test performance
+-either two way split or three way split
+-evaluate performance on test set
+-tuned to do good on the dev data, so beware
+-randomized training data first (not take the first 1000)
+
+Slide 9:
+-70-30,80-20
+-look at curves
+
+SLide 10:
+-accuracy not a good model for fraud
+-fraud data very small<- so downsample non-fraud, and boost up the samples for fraud
+-rank-order highest score to lowest score
+-what percentage of the data did we capture (fraud may be diff)
+
+Slide 11:
+-y axis: classification error
+-as classification error drops, actual model is underfitting
+-divergence btw model error of training and test data (training data=cyan, test data=overfit=blue)
+
+Slide 13:
+-bias variance rate: decomposition of error
+-find one number that maximizes the error best
+-decomposition of squared error
+
+Slide 15:
+-decomposition value: average value of y using conditional probability
+
+E[f(X)|X]
+=f(X)|X = x_i
+f(X_i) with P(X=x_i)
+f(X)
+
+so 
+E[f(X)|X]=f(X)
+
+Slide 16:
+-conditional expectation
+
+Slide 18:
+-want expected value from data
+-sample data -> gets g
+-take another sample of data -> gets another g
+-then take expected value
+-same variance structure as the other data
+-taking avg of diff curves
+-assume diff class, and then take expected value
+
+Slide 20:
+points that oscillated fits
+-two diff curves are diff
+-high variance model vs low variance model
+
+Slide 24:
+Go with underfit model, tweak it to make it fit better/smoother
+
+Slide 28:
+-overfit at the bottom
+
+Slide 29:
+-normalize input data
+-initialize weights
+-use weight decay
+
+
+Slide 30:
+-make sure scale input data: Z scaling!
+-x: 0 mean, variance of 1 input
+
+Slide 33:
+Initializes biases to 0, but not weights!
+-weight initialization: can result in better model, so read recommendations
+
+Slide 35:
+If use relu, use the last variance function
+-0 mean gaussian, .1 variance/1 variance
+
+Slide 37:
+-large weights-> L2 regularization
+
+Slide 38:
+-decay coeff = weight decay
+
+Slide 41:
+-L1 regularization done
+
+S42:
+-took a look at weights
+-no regularizations in weights
+-when do L1, get the blue one, which is a spike around 0
+
+S44:
+-L2: make weights smaller
+-So L2 have much higher peak at 0, also gaussian distribution
+
+
+
+Part2
+
+Slide 2:
+-porting python to R: allowed!
+
+-normalize inputs
+-write out functions,subset of functions
+
+Slide 6:
+-add noise to improve generalization
+
+Slide 9:
+batch normalization-carets package
+-do something layer by layer with function
+
+Slide 12:
+theta: control variance
+beta: control mean
+let nn decide what those variables mean
+
+Slide 17:
+Convergence changes= covariate shifts
+
+Slide 23
+-narrow down reasonable ranges, then narrow down to reasonable searches
+
+slide 24
+pick several numbers related to learning rate
+-scale using log/log scale
+
+Slide 27:
+-bagging/bootstrap aggregating : dropout
+
+Slide 29:
+-use dropout instead of adding noise: get ensemble behavior without adding noise
+
+Slide 30:
+-only do this when model is overfitting
+
+Slide 38:
+stacking
+-train each model on k-1 folds, then test on fold you left out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
